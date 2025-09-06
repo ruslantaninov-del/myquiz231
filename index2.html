@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Мой квиз</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #89f7fe, #66a6ff);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+    .quiz-container {
+      background: white;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.3);
+      width: 400px;
+      text-align: center;
+      animation: fadeIn 0.8s ease;
+    }
+    h1 {
+      font-size: 24px;
+      margin-bottom: 15px;
+    }
+    .btn {
+      display: block;
+      margin: 8px auto;
+      padding: 10px;
+      width: 90%;
+      border: none;
+      border-radius: 10px;
+      background: #4CAF50;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      transition: transform 0.2s, background 0.3s;
+    }
+    .btn:hover {
+      background: #45a049;
+      transform: scale(1.05);
+    }
+    .btn-nav {
+      width: 45%;
+      display: inline-block;
+    }
+    .result {
+      font-size: 18px;
+      margin-top: 15px;
+    }
+    @keyframes fadeIn {
+      from {opacity: 0; transform: translateY(-20px);}
+      to {opacity: 1; transform: translateY(0);}
+    }
+    input, textarea {
+      width: 90%;
+      margin: 5px 0;
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+  </style>
+</head>
+<body>
+  <div class="quiz-container" id="main">
+    <h1>Создай свой квиз 🎮</h1>
+    <div id="creator">
+      <textarea id="question" placeholder="Вопрос..."></textarea>
+      <input type="text" id="a1" placeholder="Ответ 1">
+      <input type="text" id="a2" placeholder="Ответ 2">
+      <input type="text" id="a3" placeholder="Ответ 3">
+      <input type="text" id="a4" placeholder="Ответ 4">
+      <input type="number" id="correct" placeholder="Номер правильного ответа (1-4)">
+      <button class="btn" onclick="addQuestion()">Добавить вопрос</button>
+      <button class="btn" onclick="startQuiz()">Начать квиз</button>
+      <button class="btn" onclick="generateLink()">Сгенерировать ссылку 🔗</button>
+    </div>
+    <div id="quiz" style="display:none;"></div>
+    <div id="nav-btns" style="display:none;">
+      <button id="prev-btn" class="btn btn-nav">Назад</button>
+      <button id="next-btn" class="btn btn-nav">Дальше</button>
+    </div>
+    <div id="result" class="result"></div>
+    <div id="after-quiz" style="display:none;">
+      <button class="btn" onclick="restartQuiz()">Пройти снова 🔄</button>
+    </div>
+  </div>
+
+  <script>
+    let questions = [];
+    let currentQuestion = 0;
+    let answersGiven = [];
+    let score = 0;
+
+    // --- генерация ссылки ---
+    function generateLink() {
+      if (questions.length === 0) {
+        alert("Добавь хотя бы один вопрос!");
+        return;
+      }
+      const data = btoa(JSON.stringify(questions)); // base64
+      const url = `${window.location.origin}${window.location.pathname}?data=${data}`;
+      navigator.clipboard.writeText(url).then(() => {
+        alert("Ссылка скопирована! Отправь её другу 📩");
+      });
+    }
+
+    // --- загрузка из ссылки ---
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("data")) {
+      try {
+        questions = JSON.parse(atob(params.get("data")));
+        document.getElementById("creator").style.display = "none";
+        document.getElementById("quiz").style.display = "block";
+        document.getElementById("nav-btns").style.display = "block";
+        loadQuestion();
+      } catch (e) {
+        alert("Ошибка загрузки квиза из ссылки");
+      }
+    }
+
+    function addQuestion() {
+      const q = document.getElementById("question").value;
+      const a1 = document.getElementById("a1").value;
+      const a2 = document.getElementById("a2").value;
+      const a3 = document.getElementById("a3").value;
+      const a4 = document.getElementById("a4").value;
+      const correct = parseInt(document.getElementById("correct").value) - 1;
+
+      if (!q || !a1 || !a2 || !a3 || !a4 || isNaN(correct)) {
+        alert("Заполни все поля!");
+        return;
+      }
+
+      questions.push({ question: q, answers: [a1, a2, a3, a4], correct: correct });
+
+      alert("Вопрос добавлен!");
+      document.getElementById("question").value = "";
+      document.getElementById("a1").value = "";
+      document.getElementById("a2").value = "";
+      document.getElementById("a3").value = "";
+      document.getElementById("a4").value = "";
+      document.getElementById("correct").value = "";
+    }
+
+    function startQuiz() {
+      if (questions.length === 0) {
+        alert("Сначала добавь хотя бы один вопрос!");
+        return;
+      }
+      document.getElementById("creator").style.display = "none";
+      document.getElementById("quiz").style.display = "block";
+      document.getElementById("nav-btns").style.display = "block";
+      loadQuestion();
+    }
+
+    function loadQuestion() {
+      const q = questions[currentQuestion];
+      const quizEl = document.getElementById("quiz");
+      quizEl.innerHTML = `<h2>${q.question}</h2>`;
+      q.answers.forEach((answer, i) => {
+        let selected = answersGiven[currentQuestion] === i ? "style='background:#2196F3;'" : "";
+        quizEl.innerHTML += `<button class="btn" ${selected} onclick="checkAnswer(${i})">${answer}</button>`;
+      });
+      document.getElementById("result").textContent = "";
+    }
+
+    function checkAnswer(answer) {
+      answersGiven[currentQuestion] = answer;
+      loadQuestion();
+    }
+
+    function showResult() {
+      score = 0;
+      answersGiven.forEach((ans, idx) => {
+        if (ans === questions[idx].correct) score++;
+      });
+      document.getElementById("quiz").style.display = "none";
+      document.getElementById("nav-btns").style.display = "none";
+      document.getElementById("after-quiz").style.display = "block";
+
+      let percent = Math.round((score / questions.length) * 100);
+      let message = "🙂 Неплохо!";
+      if (percent === 100) message = "🎉 Отлично!";
+      else if (percent >= 70) message = "🔥 Хорошо!";
+      else if (percent < 40) message = "😅 Нужно потренироваться!";
+
+      document.getElementById("result").textContent =
+        `Ты ответил правильно на ${score} из ${questions.length} (${percent}%). ${message}`;
+    }
+
+    function restartQuiz() {
+      currentQuestion = 0;
+      answersGiven = [];
+      score = 0;
+      document.getElementById("after-quiz").style.display = "none";
+      document.getElementById("creator").style.display = "block";
+      document.getElementById("result").textContent = "";
+    }
+
+    document.getElementById("next-btn").addEventListener("click", () => {
+      if (currentQuestion < questions.length - 1) {
+        currentQuestion++;
+        loadQuestion();
+      } else {
+        showResult();
+      }
+    });
+
+    document.getElementById("prev-btn").addEventListener("click", () => {
+      if (currentQuestion > 0) {
+        currentQuestion--;
+        loadQuestion();
+      }
+    });
+  </script>
+</body>
+</html>
